@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Minha TV</title>
+    <style>
+        body { background: #000; color: #fff; font-family: Arial; padding: 10px; }
+        .btn { 
+            display: block; width: 100%; padding: 20px; margin-bottom: 10px;
+            background: #222; color: #fff; text-decoration: none; 
+            border: 2px solid #444; border-radius: 8px; font-size: 20px;
+        }
+        .btn:hover { background: #ff0000; }
+    </style>
+</head>
+<body>
+    <h2 style="text-align:center">📺 MEUS CANAIS</h2>
+    <div id="lista">Carregando canais...</div>
+
+    <script>
+        // AQUI VOCÊ COLA O LINK DA SUA LISTA (DO PASSO 2 OU A QUE VOCÊ JÁ TINHA)
+        var urlLista = 'https://raw.githubusercontent.com/Ramys/Iptv-Brasil-2026/refs/heads/master/CanaisBR%20-%20Completo.m3u8';
+
+        fetch(urlLista)
+            .then(res => res.text())
+            .then(data => {
+                var linhas = data.split('\n');
+                var html = '';
+                for (var i = 0; i < linhas.length; i++) {
+                    if (linhas[i].indexOf('#EXTINF:') !== -1) {
+                        var nome = linhas[i].split(',')[1] || "Canal sem nome";
+                        var link = linhas[i + 1].trim();
+                        html += '<a class="btn" href="' + link + '">' + nome + '</a>';
+                    }
+                }
+                document.getElementById('lista').innerHTML = html;
+            })
+            .catch(err => {
+                document.getElementById('lista').innerHTML = "Erro ao carregar lista.";
+            });
+    </script>
+</body>
+</html>
