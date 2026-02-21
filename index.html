@@ -2,81 +2,72 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Minha TV Linux</title>
+    <title>Streaming Direto</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.17"></script>
     <style>
-        body { background: #000; color: #fff; font-family: Arial, sans-serif; margin: 0; padding: 0; }
-        #player-fixo { position: sticky; top: 0; width: 100%; background: #000; border-bottom: 2px solid red; z-index: 999; }
-        video { width: 100%; height: 200px; background: #111; }
+        body { background: #000; color: #fff; font-family: Arial; margin: 0; }
+        #player { position: sticky; top: 0; width: 100%; background: #000; z-index: 10; }
+        video { width: 100%; height: 210px; background: #111; border-bottom: 2px solid #ff0000; }
         .lista { padding: 10px; }
         .canal { 
-            display: block; width: 100%; padding: 15px; margin-bottom: 8px;
-            background: #222; color: #fff; border: 1px solid #444; border-radius: 5px;
-            text-align: left; font-size: 18px; text-decoration: none;
+            display: block; width: 100%; padding: 18px; margin-bottom: 10px;
+            background: #1a1a1a; color: #fff; border: 1px solid #333; 
+            border-radius: 5px; font-size: 18px; text-align: left;
         }
-        .canal:active { background: red; }
-        #status { font-size: 12px; color: yellow; margin: 5px; }
+        .canal:active { background: #ff0000; }
     </style>
 </head>
 <body>
 
-<div id="player-fixo">
-    <video id="video" controls autoplay playsinline></video>
-    <div id="status">Selecione um canal...</div>
+<div id="player">
+    <video id="video" controls autoplay></video>
+    <div id="info" style="padding:5px; font-size:12px; color:red;">Escolha um canal:</div>
 </div>
 
 <div class="lista" id="listaCanais">Carregando lista...</div>
 
 <script>
     var video = document.getElementById('video');
-    var statusTxt = document.getElementById('status');
+    var info = document.getElementById('info');
     
-    // 1. SUA LISTA AQUI (Adicionei o proxy para evitar o "carregando" eterno)
-    var minhaListaM3U = 'https://gist.githubusercontent.com/WellisonFreitas/2837881f9d27b1d68844a3a3959108a5/raw/8bd0668b5283f6f3b35a4ce6bbafdb441803c8f1/listavip.m3u'; 
-    var urlFinal = 'https://corsproxy.io/?' + encodeURIComponent(minhaListaM3U);
+    // AQUI: Cole o link da sua lista SEM o proxy, o link puro.
+    var urlM3U = 'https://gist.githubusercontent.com/WellisonFreitas/2837881f9d27b1d68844a3a3959108a5/raw/8bd0668b5283f6f3b35a4ce6bbafdb441803c8f1/listavip.m3u'; 
 
     function darPlay(url, nome) {
-        statusTxt.innerText = "Conectando: " + nome;
-        
-        // Adiciona proxy no link do canal também (ajuda muito em TVs antigas)
-        var linkComProxy = 'https://corsproxy.io/?' + encodeURIComponent(url);
-
+        info.innerText = "Reproduzindo: " + nome;
         if (Hls.isSupported()) {
             var hls = new Hls();
-            hls.loadSource(linkComProxy);
+            hls.loadSource(url);
             hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                video.play();
-                statusTxt.innerText = "Passando: " + nome;
-            });
-        } 
-        else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            // Caso a TV tenha suporte nativo (comum em algumas Linux/Opera)
-            video.src = linkComProxy;
+            hls.on(Hls.Events.MANIFEST_PARSED, function() { video.play(); });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = url;
             video.play();
         }
     }
 
-    // Carregamento da lista usando método antigo (AJAX) para maior compatibilidade
+    // Carregamento simples
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', urlFinal, true);
+    xhr.open('GET', urlM3U, true);
     xhr.onreadystatechange = function() {
-        if (xhr.readyState == 4 && xhr.status == 200) {
-            var data = xhr.responseText;
-            var linhas = data.split('\n');
-            var botoes = '';
-            for (var i = 0; i < linhas.length; i++) {
-                if (linhas[i].indexOf('#EXTINF:') !== -1) {
-                    var nome = linhas[i].split(',')[1] || "Canal";
-                    var link = linhas[i + 1].trim();
-                    botoes += '<button class="canal" onclick="darPlay(\''+link+'\', \''+nome+'\')">' + nome + '</button>';
+        if (xhr.readyState == 4) {
+            if (xhr.status == 200) {
+                var linhas = xhr.responseText.split('\n');
+                var html = '';
+                for (var i = 0; i < linhas.length; i++) {
+                    if (linhas[i].indexOf('#EXTINF:') !== -1) {
+                        var nome = linhas[i].split(',')[1] || "Canal";
+                        var link = linhas[i + 1].trim();
+                        html += '<button class="canal" onclick="darPlay(\''+link+'\', \''+nome+'\')">' + nome + '</button>';
+                    }
                 }
+                document.getElementById('listaCanais').innerHTML = html;
+            } else {
+                document.getElementById('listaCanais').innerHTML = "Erro ao carregar lista. Status: " + xhr.status;
             }
-            document.getElementById('listaCanais').innerHTML = botoes;
         }
     };
     xhr.send();
 </script>
-
 </body>
 </html>
