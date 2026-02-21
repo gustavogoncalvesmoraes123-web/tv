@@ -1,24 +1,90 @@
-<script>
-var video = document.getElementById('video');
-var info = document.getElementById('info');
-var listaDiv = document.getElementById('listaCanais');
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Streaming Leve</title>
 
-var urlM3U = 'https://raw.githubusercontent.com/Ramys/Iptv-Brasil-2026/refs/heads/master/CanaisBR%20-%20Completo.m3u8';
+<style>
+body {
+    background:#000;
+    color:#fff;
+    font-family:Arial;
+    margin:0;
+}
+
+#player {
+    position:fixed;
+    top:0;
+    width:100%;
+    background:#000;
+    z-index:10;
+}
+
+video {
+    width:100%;
+    height:220px;
+    background:#111;
+}
+
+#info {
+    padding:5px;
+    font-size:12px;
+    color:red;
+}
+
+.lista {
+    margin-top:270px;
+    padding:10px;
+}
+
+.canal {
+    display:block;
+    width:100%;
+    padding:15px;
+    margin-bottom:8px;
+    background:#1a1a1a;
+    color:#fff;
+    border:1px solid #333;
+    font-size:16px;
+}
+</style>
+
+</head>
+<body>
+
+<div id="player">
+    <video id="video" controls></video>
+    <div id="info">Carregando...</div>
+</div>
+
+<div class="lista" id="listaCanais">
+Carregando lista...
+</div>
+
+<script>
+
+var video = document.getElementById("video");
+var info = document.getElementById("info");
+var listaDiv = document.getElementById("listaCanais");
+
+/* 🔴 COLOCA SUA URL AQUI */
+var urlM3U = "https://raw.githubusercontent.com/Ramys/Iptv-Brasil-2026/refs/heads/master/CanaisBR%20-%20Completo.m3u8";
 
 var canais = [];
-var quantidadePorVez = 20;
 var indiceAtual = 0;
+var quantidadePorVez = 15;
 
-function darPlay(url, nome) {
+function darPlay(url, nome){
     info.innerHTML = "Reproduzindo: " + nome;
     video.src = url;
     video.play();
 }
 
-function mostrarMais() {
+function mostrarMais(){
+
     var contador = 0;
 
-    while (contador < quantidadePorVez && indiceAtual < canais.length) {
+    while(contador < quantidadePorVez && indiceAtual < canais.length){
 
         var canal = canais[indiceAtual];
 
@@ -26,8 +92,8 @@ function mostrarMais() {
         btn.className = "canal";
         btn.innerHTML = canal.nome;
 
-        btn.onclick = (function(link, nome) {
-            return function() {
+        btn.onclick = (function(link, nome){
+            return function(){
                 darPlay(link, nome);
             };
         })(canal.link, canal.nome);
@@ -38,40 +104,43 @@ function mostrarMais() {
         contador++;
     }
 
-    if (indiceAtual < canais.length) {
+    if(indiceAtual < canais.length){
         setTimeout(mostrarMais, 100);
     }
 }
 
 var xhr = new XMLHttpRequest();
-xhr.open('GET', urlM3U, true);
+xhr.open("GET", urlM3U, true);
 
-xhr.onreadystatechange = function() {
-    if (xhr.readyState == 4) {
-        if (xhr.status == 200) {
+xhr.onreadystatechange = function(){
 
-            var linhas = xhr.responseText.split('\n');
+    if(xhr.readyState == 4){
 
+        if(xhr.status == 200){
+
+            var linhas = xhr.responseText.split("\n");
             var i;
-            for (i = 0; i < linhas.length; i++) {
 
-                if (linhas[i].indexOf('#EXTINF:') != -1) {
+            for(i = 0; i < linhas.length; i++){
 
-                    var partes = linhas[i].split(',');
+                if(linhas[i].indexOf("#EXTINF:") != -1){
+
                     var nome = "Canal";
+                    var partes = linhas[i].split(",");
 
-                    if (partes.length > 1) {
+                    if(partes.length > 1){
                         nome = partes[1];
                     }
 
-                    if (linhas[i+1]) {
-                        var link = linhas[i+1].replace(/\r/g, '').trim();
-                        canais.push({nome: nome, link: link});
+                    if(linhas[i+1]){
+                        var link = linhas[i+1].replace(/\r/g,"").trim();
+                        canais.push({nome:nome, link:link});
                     }
                 }
             }
 
             listaDiv.innerHTML = "";
+            info.innerHTML = "Escolha um canal";
             mostrarMais();
 
         } else {
@@ -81,4 +150,8 @@ xhr.onreadystatechange = function() {
 };
 
 xhr.send();
-                    </script>
+
+</script>
+
+</body>
+</html>
