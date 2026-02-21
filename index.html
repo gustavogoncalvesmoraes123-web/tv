@@ -6,26 +6,31 @@ var listaDiv = document.getElementById('listaCanais');
 var urlM3U = 'https://raw.githubusercontent.com/Ramys/Iptv-Brasil-2026/refs/heads/master/CanaisBR%20-%20Completo.m3u8';
 
 var canais = [];
-var quantidadePorVez = 30;
+var quantidadePorVez = 20;
 var indiceAtual = 0;
 
 function darPlay(url, nome) {
-    info.innerText = "Reproduzindo: " + nome;
+    info.innerHTML = "Reproduzindo: " + nome;
     video.src = url;
     video.play();
 }
 
 function mostrarMais() {
     var contador = 0;
+
     while (contador < quantidadePorVez && indiceAtual < canais.length) {
+
         var canal = canais[indiceAtual];
 
         var btn = document.createElement("button");
         btn.className = "canal";
-        btn.textContent = canal.nome;
-        btn.onclick = function(link, nome) {
-            return function() { darPlay(link, nome); };
-        }(canal.link, canal.nome);
+        btn.innerHTML = canal.nome;
+
+        btn.onclick = (function(link, nome) {
+            return function() {
+                darPlay(link, nome);
+            };
+        })(canal.link, canal.nome);
 
         listaDiv.appendChild(btn);
 
@@ -34,32 +39,46 @@ function mostrarMais() {
     }
 
     if (indiceAtual < canais.length) {
-        setTimeout(mostrarMais, 50); // carrega aos poucos
+        setTimeout(mostrarMais, 100);
     }
 }
 
-fetch(urlM3U)
-.then(function(response) {
-    return response.text();
-})
-.then(function(texto) {
-    var linhas = texto.split('\n');
+var xhr = new XMLHttpRequest();
+xhr.open('GET', urlM3U, true);
 
-    for (var i = 0; i < linhas.length; i++) {
-        if (linhas[i].indexOf('#EXTINF:') !== -1) {
-            var nome = linhas[i].split(',')[1] || "Canal";
-            var link = linhas[i + 1] ? linhas[i + 1].trim() : null;
+xhr.onreadystatechange = function() {
+    if (xhr.readyState == 4) {
+        if (xhr.status == 200) {
 
-            if (link) {
-                canais.push({ nome: nome, link: link });
+            var linhas = xhr.responseText.split('\n');
+
+            var i;
+            for (i = 0; i < linhas.length; i++) {
+
+                if (linhas[i].indexOf('#EXTINF:') != -1) {
+
+                    var partes = linhas[i].split(',');
+                    var nome = "Canal";
+
+                    if (partes.length > 1) {
+                        nome = partes[1];
+                    }
+
+                    if (linhas[i+1]) {
+                        var link = linhas[i+1].replace(/\r/g, '').trim();
+                        canais.push({nome: nome, link: link});
+                    }
+                }
             }
+
+            listaDiv.innerHTML = "";
+            mostrarMais();
+
+        } else {
+            listaDiv.innerHTML = "Erro ao carregar lista. Status: " + xhr.status;
         }
     }
+};
 
-    listaDiv.innerHTML = "";
-    mostrarMais();
-})
-.catch(function() {
-    listaDiv.innerHTML = "Erro ao carregar lista.";
-});
-</script>
+xhr.send();
+                    </script>
