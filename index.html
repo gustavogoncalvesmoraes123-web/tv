@@ -1,43 +1,83 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Minha TV</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Player de Streaming</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
-        body { background: #000; color: #fff; font-family: Arial; padding: 10px; }
-        .btn { 
-            display: block; width: 100%; padding: 20px; margin-bottom: 10px;
-            background: #222; color: #fff; text-decoration: none; 
-            border: 2px solid #444; border-radius: 8px; font-size: 20px;
+        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; text-align: center; }
+        
+        /* Área do Vídeo fixa no topo */
+        #video-container { 
+            position: sticky; top: 0; background: #000; 
+            width: 100%; z-index: 100; border-bottom: 2px solid #ff0000;
         }
-        .btn:hover { background: #ff0000; }
+        video { width: 100%; max-height: 50vh; background: #111; }
+
+        /* Lista de Canais */
+        #lista { padding: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1-fr)); gap: 10px; }
+        .canal-btn { 
+            background: #222; border: 1px solid #444; color: #fff; 
+            padding: 15px; border-radius: 8px; cursor: pointer;
+            font-size: 16px; font-weight: bold; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap;
+        }
+        .canal-btn:active, .canal-btn:focus { background: #ff0000; outline: none; }
     </style>
 </head>
 <body>
-    <h2 style="text-align:center">📺 MEUS CANAIS</h2>
+
+    <div id="video-container">
+        <video id="video" controls autoplay playsinline></video>
+        <h3 id="titulo-atual">Escolha um canal abaixo</h3>
+    </div>
+
     <div id="lista">Carregando canais...</div>
 
     <script>
-        // AQUI VOCÊ COLA O LINK DA SUA LISTA (DO PASSO 2 OU A QUE VOCÊ JÁ TINHA)
-        var urlLista = 'https://gist.githubusercontent.com/BrasilChannel/77d80bf7b68011726d2a34ca9c6ad219/raw/c973a6df2aec707f6f37a1403464e7560d1343d2/Canais%2520Full';
+        const video = document.getElementById('video');
+        const tituloAtual = document.getElementById('titulo-atual');
+        const urlM3U = 'https://raw.githubusercontent.com/Ramys/Iptv-Brasil-2026/refs/heads/master/CanaisBR%20-%20Completo.m3u8'; // <--- COLOQUE SEU LINK AQUI
 
-        fetch(urlLista)
+        // Função para dar play no vídeo
+        function tocarVideo(url, nome) {
+            tituloAtual.innerText = "Carregando: " + nome;
+            
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play();
+                });
+            } 
+            // Para navegadores que já aceitam HLS nativo (como Safari ou algumas TVs)
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                video.addEventListener('loadedmetadata', function() {
+                    video.play();
+                });
+            }
+        }
+
+        // Carregar a lista e criar os botões
+        fetch(urlM3U)
             .then(res => res.text())
             .then(data => {
-                var linhas = data.split('\n');
-                var html = '';
-                for (var i = 0; i < linhas.length; i++) {
-                    if (linhas[i].indexOf('#EXTINF:') !== -1) {
-                        var nome = linhas[i].split(',')[1] || "Canal sem nome";
-                        var link = linhas[i + 1].trim();
-                        html += '<a class="btn" href="' + link + '">' + nome + '</a>';
+                const linhas = data.split('\n');
+                let html = '';
+                for (let i = 0; i < linhas.length; i++) {
+                    if (linhas[i].includes('#EXTINF:')) {
+                        const nome = linhas[i].split(',')[1] || "Canal";
+                        const link = linhas[i + 1].trim();
+                        // Criamos um botão que chama a função de play ao clicar
+                        html += `<button class="canal-btn" onclick="tocarVideo('${link}', '${nome}')">${nome}</button>`;
                     }
                 }
                 document.getElementById('lista').innerHTML = html;
             })
-            .catch(err => {
-                document.getElementById('lista').innerHTML = "Erro ao carregar lista.";
-            });
+            .catch(err => document.getElementById('lista').innerHTML = "Erro ao carregar lista.");
     </script>
 </body>
 </html>
