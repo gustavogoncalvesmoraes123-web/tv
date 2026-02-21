@@ -2,69 +2,99 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Streaming Direto</title>
+    <title>Streaming por Categorias</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.17"></script>
     <style>
         body { background: #000; color: #fff; font-family: Arial; margin: 0; }
-        #player { position: sticky; top: 0; width: 100%; background: #000; z-index: 10; }
-        video { width: 100%; height: 210px; background: #111; border-bottom: 2px solid #ff0000; }
+        #player-fixo { position: sticky; top: 0; width: 100%; background: #000; z-index: 100; border-bottom: 2px solid red; }
+        video { width: 100%; height: 200px; background: #111; }
+        
+        /* Menu de Grupos */
+        #menu-grupos { display: flex; overflow-x: auto; white-space: nowrap; background: #222; padding: 10px; }
+        .aba { padding: 10px 20px; margin-right: 10px; background: #444; border-radius: 20px; cursor: pointer; font-size: 14px; border: none; color: #fff; }
+        .aba.ativa { background: red; }
+
         .lista { padding: 10px; }
         .canal { 
-            display: block; width: 100%; padding: 18px; margin-bottom: 10px;
-            background: #1a1a1a; color: #fff; border: 1px solid #333; 
-            border-radius: 5px; font-size: 18px; text-align: left;
+            display: block; width: 100%; padding: 15px; margin-bottom: 8px;
+            background: #1a1a1a; color: #fff; border: 1px solid #333; border-radius: 5px;
+            text-align: left; font-size: 16px;
         }
-        .canal:active { background: #ff0000; }
     </style>
 </head>
 <body>
 
-<div id="player">
-    <video id="video" controls autoplay></video>
-    <div id="info" style="padding:5px; font-size:12px; color:red;">Escolha um canal:</div>
+<div id="player-fixo">
+    <video id="video" controls autoplay muted></video>
+    <div id="menu-grupos">Carregando grupos...</div>
 </div>
 
-<div class="lista" id="listaCanais">Carregando lista...</div>
+<div class="lista" id="listaCanais">Selecione uma categoria acima.</div>
 
 <script>
     var video = document.getElementById('video');
-    var info = document.getElementById('info');
-    
-    // AQUI: Cole o link da sua lista SEM o proxy, o link puro.
-    var urlM3U = 'https://raw.githubusercontent.com/Ramys/Iptv-Brasil-2026/refs/heads/master/CanaisBR01.m3u8'; 
+    var abaCanais = document.getElementById('listaCanais');
+    var menuGrupos = document.getElementById('menu-grupos');
+    var todosCanais = []; // Vai guardar a lista processada
+
+    // 1. LINK DA SUA LISTA (Usei o proxy pra garantir que carregue)
+    var urlM3U = 'https://corsproxy.io/?' + encodeURIComponent('https://raw.githubusercontent.com/Ramys/Iptv-Brasil-2026/refs/heads/master/CanaisBR%20-%20Completo.m3u8');
 
     function darPlay(url, nome) {
-        info.innerText = "Reproduzindo: " + nome;
         if (Hls.isSupported()) {
             var hls = new Hls();
             hls.loadSource(url);
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, function() { video.play(); });
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        } else {
             video.src = url;
             video.play();
         }
     }
 
-    // Carregamento simples
+    function mostrarGrupo(nomeGrupo) {
+        var html = '';
+        var filtrados = todosCanais.filter(function(c) { return c.grupo === nomeGrupo; });
+        
+        for (var i = 0; i < filtrados.length; i++) {
+            html += '<button class="canal" onclick="darPlay(\''+filtrados[i].link+'\', \''+filtrados[i].nome+'\')">' + filtrados[i].nome + '</button>';
+        }
+        abaCanais.innerHTML = html;
+        window.scrollTo(0,0);
+    }
+
+    // Processar a lista M3U
     var xhr = new XMLHttpRequest();
     xhr.open('GET', urlM3U, true);
     xhr.onreadystatechange = function() {
-        if (xhr.readyState == 4) {
-            if (xhr.status == 200) {
-                var linhas = xhr.responseText.split('\n');
-                var html = '';
-                for (var i = 0; i < linhas.length; i++) {
-                    if (linhas[i].indexOf('#EXTINF:') !== -1) {
-                        var nome = linhas[i].split(',')[1] || "Canal";
-                        var link = linhas[i + 1].trim();
-                        html += '<button class="canal" onclick="darPlay(\''+link+'\', \''+nome+'\')">' + nome + '</button>';
+        if (xhr.readyState == 4 && xhr.status == 200) {
+            var linhas = xhr.responseText.split('\n');
+            var gruposUnicos = [];
+            
+            for (var i = 0; i < linhas.length; i++) {
+                if (linhas[i].indexOf('#EXTINF:') !== -1) {
+                    // Pega o nome do grupo entre aspas no group-title=""
+                    var regexGrupo = /group-title="([^"]+)"/;
+                    var match = regexGrupo.exec(linhas[i]);
+                    var grupo = match ? match[1] : "OUTROS";
+                    
+                    var nome = linhas[i].split(',')[1] || "Canal";
+                    var link = linhas[i + 1] ? linhas[i + 1].trim() : "";
+
+                    if (link.indexOf('http') === 0) {
+                        todosCanais.push({ nome: nome, link: link, grupo: grupo });
+                        if (gruposUnicos.indexOf(grupo) === -1) gruposUnicos.push(grupo);
                     }
                 }
-                document.getElementById('listaCanais').innerHTML = html;
-            } else {
-                document.getElementById('listaCanais').innerHTML = "Erro ao carregar lista. Status: " + xhr.status;
             }
+
+            // Criar botões de categorias
+            var menuHtml = '';
+            for (var j = 0; j < gruposUnicos.length; j++) {
+                menuHtml += '<button class="aba" onclick="mostrarGrupo(\''+gruposUnicos[j]+'\')">' + gruposUnicos[j] + '</button>';
+            }
+            menuGrupos.innerHTML = menuHtml;
+            abaCanais.innerHTML = "Lista carregada! Escolha uma categoria no menu acima.";
         }
     };
     xhr.send();
